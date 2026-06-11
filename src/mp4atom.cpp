@@ -986,6 +986,8 @@ MP4Atom::factory( MP4File &file, MP4Atom* parent, const char* type )
         case 't':
             if( ATOMID(type) == ATOMID("text") )
                 return new MP4TextAtom(file);
+            if( ATOMID(type) == ATOMID("tsc2") )
+                return new MP4Tsc2Atom(file);
             if( ATOMID(type) == ATOMID("tx3g") )
                 return new MP4Tx3gAtom(file);
             if( ATOMID(type) == ATOMID("tkhd") )

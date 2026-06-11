@@ -1840,6 +1840,31 @@ MP4TrackId MP4File::AddMP4VideoTrack(
     return trackId;
 }
 
+MP4TrackId MP4File::AddTSC2VideoTrack(
+    uint32_t timeScale,
+    MP4Duration sampleDuration,
+    uint16_t width,
+    uint16_t height)
+{
+    MP4TrackId trackId = AddVideoTrackDefault(timeScale,
+                         sampleDuration,
+                         width,
+                         height,
+                         "tsc2");
+
+    SetTrackIntegerProperty(trackId, "mdia.minf.stbl.stsd.tsc2.width", width);
+    SetTrackIntegerProperty(trackId, "mdia.minf.stbl.stsd.tsc2.height", height);
+    SetTrackIntegerProperty(trackId, "mdia.minf.stbl.stsd.tsc2.esds.ESID", 0);
+
+    SetTrackIntegerProperty(trackId,
+                            "mdia.minf.stbl.stsd.tsc2.esds.decConfigDescr.objectTypeId",
+                            MP4_PRIVATE_VIDEO_TYPE);
+    SetTrackIntegerProperty(trackId,
+                            "mdia.minf.stbl.stsd.tsc2.esds.decConfigDescr.streamType",
+                            MP4VisualStreamType);
+    return trackId;
+}
+
 // ismacrypted
 MP4TrackId MP4File::AddEncVideoTrack(uint32_t timeScale,
                                      MP4Duration sampleDuration,

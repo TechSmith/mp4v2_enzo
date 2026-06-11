@@ -323,6 +323,12 @@ public:
         uint16_t height,
         uint8_t videoType);
 
+    MP4TrackId AddTSC2VideoTrack(
+        uint32_t timeScale,
+        MP4Duration sampleDuration,
+        uint16_t width,
+        uint16_t height);
+
     MP4TrackId AddEncVideoTrack( // ismacryp
         uint32_t timeScale,
         MP4Duration sampleDuration,
