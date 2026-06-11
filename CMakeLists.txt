@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 option(BUILD_SHARED "Build libmp4v2 as a shared library" ON)
 option(BUILD_UTILS "Build MP4v2 auxiliary tools" ON)
+option(SET_VERSION_PROPERTIES "Set VERSION and SOVERSION on the mp4v2 shared library" ON)
 
 #
 # Generate include/mp4v2/project.h and libplatform/config.h
@@ -91,7 +92,7 @@ function(configure_pkg_config_file pkg_config_file_in)
     set(VERSION ${PROJECT_version})
     string(REPLACE ".in" "" pkg_config_file ${pkg_config_file_in})
     configure_file(${pkg_config_file_in} ${pkg_config_file} @ONLY)
-endfunction() 
+endfunction()
 
 configure_pkg_config_file(mp4v2.pc.in)
 
@@ -311,7 +312,9 @@ set(LIBUTIL_SOURCE_FILES
 if(BUILD_SHARED)
     add_library(mp4v2 SHARED ${MP4V2_SOURCE_FILES})
     target_compile_definitions(mp4v2 PRIVATE MP4V2_EXPORTS)
-    set_target_properties(mp4v2 PROPERTIES VERSION ${PROJECT_version} SOVERSION ${PROJECT_version_major})
+    if(SET_VERSION_PROPERTIES)
+        set_target_properties(mp4v2 PROPERTIES VERSION ${PROJECT_version} SOVERSION ${PROJECT_version_major})
+    endif()
 else()
     add_library(mp4v2 STATIC ${MP4V2_SOURCE_FILES})
     target_compile_definitions(mp4v2 PUBLIC MP4V2_USE_STATIC_LIB)
