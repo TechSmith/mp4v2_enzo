@@ -803,6 +803,36 @@ void MP4TableProperty::Read(MP4File& file, uint32_t index)
 
     uint32_t numEntries = GetCount();
 
+    // Vuln #4 fix: validate entry count against remaining atom size to prevent
+    // unbounded allocation from attacker-controlled entryCount fields.
+    if (numEntries > 0) {
+        uint64_t remaining = m_parentAtom.GetEnd() - file.GetPosition();
+
+        // Compute minimum bytes per entry from the table's sub-properties
+        uint32_t minEntrySize = 0;
+        for (uint32_t j = 0; j < numProperties; j++) {
+            switch (m_pProperties[j]->GetType()) {
+                case Integer8Property:  minEntrySize += 1; break;
+                case Integer16Property: minEntrySize += 2; break;
+                case Integer24Property: minEntrySize += 3; break;
+                case Integer32Property: minEntrySize += 4; break;
+                case Integer64Property: minEntrySize += 8; break;
+                case Float32Property:   minEntrySize += 4; break;
+                case Float64Property:   minEntrySize += 8; break;
+                default:                minEntrySize += 1; break;
+            }
+        }
+        if (minEntrySize == 0) minEntrySize = 1;
+
+        if ((uint64_t)numEntries * minEntrySize > remaining) {
+            ostringstream oss;
+            oss << "table '" << m_parentAtom.GetType() << "." << GetName()
+                << "' entry count " << numEntries
+                << " exceeds remaining atom size (" << remaining << " bytes)";
+            throw new EXCEPTION(oss.str().c_str());
+        }
+    }
+
     /* for each property set size */
     for (uint32_t j = 0; j < numProperties; j++) {
         m_pProperties[j]->SetCount(numEntries);
