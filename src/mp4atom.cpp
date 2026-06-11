@@ -111,6 +111,14 @@ void MP4Atom::Generate()
 
 MP4Atom* MP4Atom::ReadAtom(MP4File& file, MP4Atom* pParentAtom)
 {
+    // Vuln #3 fix: prevent stack overflow from deeply nested atoms
+    static const uint8_t MAX_ATOM_DEPTH = 64;
+    if (pParentAtom && pParentAtom->GetDepth() >= MAX_ATOM_DEPTH) {
+        ostringstream oss;
+        oss << "atom nesting depth exceeds maximum (" << (unsigned)MAX_ATOM_DEPTH << ")";
+        throw new EXCEPTION(oss.str().c_str());
+    }
+
     uint8_t hdrSize = 8;
     uint8_t extendedType[16];
 
