@@ -163,6 +163,7 @@ public:
     MP4Atom *FindTrackAtom(MP4TrackId trackId, const char *name);
     bool GetTrackAtomData(MP4TrackId trackId, const char *name,
                           uint8_t **ppAtomData, uint64_t *pAtomDataSize);
+    uint64_t GetSampleFileOffset(MP4TrackId trackId, MP4SampleId sampleId);
 
     /* atom parsing callback */
     MP4ShouldParseAtomCallback GetShouldParseAtomCallback() const {

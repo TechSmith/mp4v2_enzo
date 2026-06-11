@@ -3235,6 +3235,11 @@ MP4Atom *MP4File::FindTrackAtom (MP4TrackId trackId, const char *name)
     return FindAtom(MakeTrackName(trackId, name));
 }
 
+uint64_t MP4File::GetSampleFileOffset(MP4TrackId trackId, MP4SampleId sampleId)
+{
+    return m_pTracks[FindTrackIndex(trackId)]->GetSampleFileOffset(sampleId);
+}
+
 bool MP4File::GetTrackAtomData(MP4TrackId trackId, const char *name,
                                uint8_t **ppAtomData, uint64_t *pAtomDataSize)
 {

@@ -232,6 +232,23 @@ bool MP4SetTrackName(
     MP4TrackId    trackId,
     const char*   name );
 
+/** Free a track name string allocated by MP4GetTrackName.
+ *
+ *  MP4FreeTrackName frees the memory that was allocated by a call to
+ *  the MP4GetTrackName function.
+ *
+ *  On the Windows platform this cannot be done directly by the client
+ *  application because the C runtime of the client application and the
+ *  C runtime of the mp4v2 DLL may be different. This function allows
+ *  the client application to let the mp4v2 DLL free the memory with
+ *  the appropriate CRT heap manager.
+ *
+ *  @param pTrackName pointer to track name allocated with MP4GetTrackName.
+ */
+MP4V2_EXPORT
+void MP4FreeTrackName(
+    char* pTrackName );
+
 /** Get the encoding type of an MPEG-4 audio track.
  *
  *  MP4GetTrackAudioMpeg4Type returns the MPEG-4 encoding type of the specified

@@ -2911,6 +2911,32 @@ MP4FileHandle MP4ModifyCallbacks(const MP4IOCallbacks* callbacks,
         return false;
     }
 
+    uint64_t MP4GetSampleFileOffset(
+        MP4FileHandle hFile,
+        MP4TrackId    trackId,
+        MP4SampleId   sampleId)
+    {
+        if (MP4_IS_VALID_FILE_HANDLE(hFile)) {
+            try {
+                return ((MP4File*)hFile)->GetSampleFileOffset(
+                           trackId, sampleId);
+            }
+            catch( Exception* x ) {
+                mp4v2::impl::log.errorf(*x);
+                delete x;
+            }
+            catch( ... ) {
+                mp4v2::impl::log.errorf( "%s: failed", __FUNCTION__ );
+            }
+        }
+        return 0;
+    }
+
+    void MP4FreeTrackName(char *pTrackName)
+    {
+        MP4Free(pTrackName);
+    }
+
     bool MP4GetTrackAtomData(
         MP4FileHandle hFile, MP4TrackId trackId,
         const char *atomName,
