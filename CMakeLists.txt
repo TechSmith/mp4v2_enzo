@@ -398,3 +398,9 @@ if(BUILD_UTILS)
                     mp4trackdump RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()
 
+#
+# Test target
+#
+add_executable(mp4v2_test test/test_vuln_poc.cpp)
+target_link_libraries(mp4v2_test mp4v2)
+
