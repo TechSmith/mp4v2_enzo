@@ -403,4 +403,5 @@ endif()
 #
 add_executable(mp4v2_test test/test_vuln_poc.cpp)
 target_link_libraries(mp4v2_test mp4v2)
+target_compile_definitions(mp4v2_test PRIVATE POC_TEST_FILES_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 

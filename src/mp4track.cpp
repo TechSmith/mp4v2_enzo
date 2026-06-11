@@ -634,7 +634,10 @@ uint32_t MP4Track::GetSampleSize(MP4SampleId sampleId)
             m_pStszFixedSampleSizeProperty->GetValue();
 
         if (fixedSampleSize != 0) {
-            return fixedSampleSize * m_bytesPerSample;
+            uint64_t result = (uint64_t)fixedSampleSize * m_bytesPerSample;
+            if (result > UINT32_MAX)
+                throw new EXCEPTION("sample size overflow");
+            return (uint32_t)result;
         }
     }
     // will have to check for 4 bit sample size here
@@ -643,10 +646,16 @@ uint32_t MP4Track::GetSampleSize(MP4SampleId sampleId)
         if ((sampleId - 1) / 2 == 0) {
             value >>= 4;
         } else value &= 0xf;
-        return m_bytesPerSample * value;
+        uint64_t result = (uint64_t)m_bytesPerSample * value;
+        if (result > UINT32_MAX)
+            throw new EXCEPTION("sample size overflow");
+        return (uint32_t)result;
     }
-    return m_bytesPerSample *
+    uint64_t result = (uint64_t)m_bytesPerSample *
            m_pStszSampleSizeProperty->GetValue(sampleId - 1);
+    if (result > UINT32_MAX)
+        throw new EXCEPTION("sample size overflow");
+    return (uint32_t)result;
 }
 
 uint32_t MP4Track::GetMaxSampleSize()
@@ -656,7 +665,10 @@ uint32_t MP4Track::GetMaxSampleSize()
             m_pStszFixedSampleSizeProperty->GetValue();
 
         if (fixedSampleSize != 0) {
-            return fixedSampleSize * m_bytesPerSample;
+            uint64_t result = (uint64_t)fixedSampleSize * m_bytesPerSample;
+            if (result > UINT32_MAX)
+                throw new EXCEPTION("sample size overflow");
+            return (uint32_t)result;
         }
     }
 
@@ -669,7 +681,10 @@ uint32_t MP4Track::GetMaxSampleSize()
             maxSampleSize = sampleSize;
         }
     }
-    return maxSampleSize * m_bytesPerSample;
+    uint64_t result = (uint64_t)maxSampleSize * m_bytesPerSample;
+    if (result > UINT32_MAX)
+        throw new EXCEPTION("sample size overflow");
+    return (uint32_t)result;
 }
 
 uint64_t MP4Track::GetTotalOfSampleSizes()
