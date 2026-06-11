@@ -809,8 +809,11 @@ void MP4TableProperty::Read(MP4File& file, uint32_t index)
         uint64_t remaining = m_parentAtom.GetEnd() - file.GetPosition();
 
         // Compute minimum bytes per entry from the table's sub-properties
+        // (skip implicit properties as they are not read from file)
         uint32_t minEntrySize = 0;
         for (uint32_t j = 0; j < numProperties; j++) {
+            if (m_pProperties[j]->IsImplicit())
+                continue;
             switch (m_pProperties[j]->GetType()) {
                 case Integer8Property:  minEntrySize += 1; break;
                 case Integer16Property: minEntrySize += 2; break;

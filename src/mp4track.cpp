@@ -1022,7 +1022,7 @@ uint64_t MP4Track::GetSampleFileOffset(MP4SampleId sampleId)
 
     // need cumulative samples sizes from firstSample to sampleId - 1
     MP4SampleId startSample = firstSampleInChunk;
-    uint32_t sampleOffset = 0;
+    uint64_t sampleOffset = 0;
 
     if (chunkId == m_cachedSfoChunkId && sampleId >= m_cachedSfoSampleId) {
         startSample = m_cachedSfoSampleId;
@@ -1037,7 +1037,11 @@ uint64_t MP4Track::GetSampleFileOffset(MP4SampleId sampleId)
     m_cachedSfoSampleId = sampleId;
     m_cachedSfoSampleOffset = sampleOffset;
 
-    return chunkOffset + sampleOffset;
+    uint64_t fileOffset = chunkOffset + sampleOffset;
+    if (fileOffset > m_File.GetSize())
+        throw new EXCEPTION("sample offset exceeds file size");
+
+    return fileOffset;
 }
 
 void MP4Track::UpdateSampleToChunk(MP4SampleId sampleId,

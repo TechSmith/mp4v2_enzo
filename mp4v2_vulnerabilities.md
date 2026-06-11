@@ -3,8 +3,8 @@
 ## Status
 
 - **Commit `2becd16`**: Fixed Vuln #1 and #2 (integer underflow in metadata atom parsing)
-- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize)
-- **Remaining**: 10 vulnerabilities unfixed (see below)
+- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation)
+- **Remaining**: 9 vulnerabilities unfixed (see below)
 
 ## Build Instructions
 
@@ -87,28 +87,13 @@ return (uint32_t)result;
 
 ---
 
-## Remaining Vulnerabilities (Unfixed)
+### Vuln #6: Integer Overflow in sampleOffset Accumulation
 
-### Vuln #6: Integer Overflow in sampleOffset Accumulation [HIGH]
+**Fixed in:** `src/mp4track.cpp`, `src/mp4track.h`
 
-**File:** `src/mp4track.cpp:1010-1018`
+**Problem:** In `GetSampleFileOffset()`, accumulated sample sizes were stored in a `uint32_t sampleOffset`, which wraps on overflow. Combined with an attacker-controlled `chunkOffset` from `stco`/`co64`, this produces an arbitrary file seek position. The cached offset `m_cachedSfoSampleOffset` was also `uint32_t`.
 
-**Code:**
-```cpp
-uint32_t sampleOffset = 0;
-
-// ...
-for (MP4SampleId i = startSample; i < sampleId; i++) {
-    sampleOffset += GetSampleSize(i);  // wraps uint32 with many large samples
-}
-
-// Used at line 1025:
-return chunkOffset + sampleOffset;  // wrong file position
-```
-
-**Problem:** Accumulated sample sizes wrap `uint32_t`, producing a small offset. Combined with `chunkOffset` (from `stco`/`co64`, also attacker-controlled), this yields an arbitrary file seek position.
-
-**Fix:** Use `uint64_t sampleOffset` and validate the final offset against file size:
+**Fix:** Changed `sampleOffset` and `m_cachedSfoSampleOffset` to `uint64_t`. Added validation that the final computed file offset (`chunkOffset + sampleOffset`) does not exceed the file size before returning it:
 ```cpp
 uint64_t sampleOffset = 0;
 for (MP4SampleId i = startSample; i < sampleId; i++) {
@@ -120,7 +105,11 @@ if (fileOffset > m_File.GetSize())
 return fileOffset;
 ```
 
+**POC:** `test/poc_offset_overflow.mp4` (587 bytes) - video track with 3 samples of size `0x80000000` each in one chunk. Reading sample 3 requires accumulating offsets of samples 1+2 = `0x100000000`, which exceeds file size.
+
 ---
+
+## Remaining Vulnerabilities (Unfixed)
 
 ### Vuln #7: MP4Realloc Takes uint32_t (Systemic Truncation) [HIGH]
 

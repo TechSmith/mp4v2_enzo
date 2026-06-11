@@ -292,7 +292,7 @@ protected:
     // for improved sample file offset query performance
     MP4ChunkId  m_cachedSfoChunkId;
     MP4SampleId m_cachedSfoSampleId;
-    uint32_t    m_cachedSfoSampleOffset;
+    uint64_t    m_cachedSfoSampleOffset;
 
     string m_sdtpLog; // records frame types for H264 samples
 };
