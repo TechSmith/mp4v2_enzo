@@ -3,8 +3,8 @@
 ## Status
 
 - **Commit `2becd16`**: Fixed Vuln #1 and #2 (integer underflow in metadata atom parsing)
-- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation)
-- **Remaining**: 9 vulnerabilities unfixed (see below)
+- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix)
+- **Remaining**: 8 vulnerabilities unfixed (see below)
 
 ## Build Instructions
 
@@ -109,34 +109,28 @@ return fileOffset;
 
 ---
 
-## Remaining Vulnerabilities (Unfixed)
+### Vuln #7: MP4Realloc Takes uint32_t (Systemic Truncation)
 
-### Vuln #7: MP4Realloc Takes uint32_t (Systemic Truncation) [HIGH]
+**Fixed in:** `src/mp4util.h`, `src/mp4array.h`, `src/mp4file_io.cpp`, `src/mp4track.cpp`
 
-**File:** `src/mp4util.h:81`
-
-**Code:**
-```cpp
-inline void* MP4Realloc(void* p, uint32_t newSize) {
-    // ...
-    void* temp = realloc(p, newSize);
-    // ...
-}
-```
-
-**Problem:** Multiple callers pass `uint64_t` values that are silently truncated:
+**Problem:** `MP4Realloc` took a `uint32_t newSize` parameter. Multiple callers passed `uint64_t` or `size_t` values that were silently truncated:
 - `src/mp4file_io.cpp:152` - `m_memoryBufferSize` is `uint64_t`
 - `src/mp4array.h:92` - `newSize * sizeof(type)` is a `uint64_t` expression
 
 When truncated, a much smaller buffer is allocated, then writes overflow it.
 
-**Fix:** Change signature to `size_t`:
-```cpp
-inline void* MP4Realloc(void* p, size_t newSize) {
-```
-Then audit all call sites for correctness. The `MP4Array::Resize` overflow check at `mp4array.h:90` should be updated to match.
+**Fix:**
+1. Changed `MP4Realloc` signature from `uint32_t` to `size_t`
+2. Updated `MP4Array::Resize()` to compute `allocBytes` as `(size_t)newSize * sizeof(type)` with overflow detection (`allocBytes / sizeof(type) != newSize`)
+3. Updated `MP4Array::Insert()` doubling path to use explicit `size_t allocBytes` with overflow check
+4. Added `SIZE_MAX` guard in `mp4file_io.cpp` before passing `m_memoryBufferSize` to `MP4Realloc`
+5. Used explicit `size_t` cast in `mp4track.cpp` chunk buffer reallocation
+
+**POC:** `test/poc_realloc_truncation.mp4` (365 bytes) - `stts` atom with extended size `0x100000018` and `entryCount=0x20000001`. With 8-byte entries, allocation size = `0x100000008` which truncates to `8` in `uint32_t`.
 
 ---
+
+## Remaining Vulnerabilities (Unfixed)
 
 ### Vuln #8: Uncontrolled Allocation from Sample Size Metadata [HIGH]
 

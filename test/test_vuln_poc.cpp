@@ -34,6 +34,7 @@ static const TestCase tests[] = {
     { "test/poc_table_alloc.mp4",           "Vuln #4: Unbounded table allocation from bogus entryCount", true, NULL },
     { "test/poc_sample_size_overflow.mp4",  "Vuln #5: Integer overflow in GetSampleSize multiplication", false, test_sample_size_overflow },
     { "test/poc_offset_overflow.mp4",       "Vuln #6: Integer overflow in sampleOffset accumulation", false, test_offset_overflow },
+    { "test/poc_realloc_truncation.mp4",    "Vuln #7: MP4Realloc uint32_t truncation on large alloc", true, NULL },
 };
 
 static const int NUM_TESTS = sizeof(tests) / sizeof(tests[0]);

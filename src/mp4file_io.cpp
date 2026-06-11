@@ -149,7 +149,9 @@ void MP4File::WriteBytes( uint8_t* buf, uint32_t bufsiz, File* file )
     if( m_memoryBuffer ) {
         if( m_memoryBufferPosition + bufsiz > m_memoryBufferSize ) {
             m_memoryBufferSize = 2 * (m_memoryBufferSize + bufsiz);
-            m_memoryBuffer = (uint8_t*)MP4Realloc( m_memoryBuffer, m_memoryBufferSize );
+            if( m_memoryBufferSize > SIZE_MAX )
+                throw new EXCEPTION("memory buffer size exceeds addressable range");
+            m_memoryBuffer = (uint8_t*)MP4Realloc( m_memoryBuffer, (size_t)m_memoryBufferSize );
         }
         memcpy( &m_memoryBuffer[m_memoryBufferPosition], buf, bufsiz );
         m_memoryBufferPosition += bufsiz;
