@@ -3,8 +3,8 @@
 ## Status
 
 - **Commit `2becd16`**: Fixed Vuln #1 and #2 (integer underflow in metadata atom parsing)
-- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix), Vuln #8 (sample size validation against file size), Vuln #9 (file bounds validation on seek+read position)
-- **Remaining**: 6 vulnerabilities unfixed (see below)
+- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix), Vuln #8 (sample size validation against file size), Vuln #9 (file bounds validation on seek+read position), Vuln #12 (stsc firstSample overflow-checked arithmetic), Vuln #14 (trun sampleCount validation against file size)
+- **Remaining**: 4 vulnerabilities unfixed (see below)
 
 ## Build Instructions
 
@@ -163,6 +163,48 @@ if (fileOffset + (uint64_t)sampleSize > m_File.GetSize(fin))
 
 ---
 
+### Vuln #12: stsc firstSample Integer Overflow
+
+**Fixed in:** `src/atom_stsc.cpp`
+
+**Problem:** In `MP4StscAtom::Read()`, the computation `(pFirstChunk->GetValue(i+1) - pFirstChunk->GetValue(i)) * pSamplesPerChunk->GetValue(i)` uses uint32 arithmetic. Both operands are attacker-controlled values from the file. Their product can overflow uint32, corrupting the `firstSample` lookup table used for all subsequent sample-to-chunk mapping. Downstream, out-of-bounds array accesses occur.
+
+**Fix:** Use `uint64_t` intermediate for the multiplication and check for overflow before adding to `sampleId`:
+```cpp
+uint64_t delta = (uint64_t)(pFirstChunk->GetValue(i+1) - pFirstChunk->GetValue(i))
+                 * pSamplesPerChunk->GetValue(i);
+if (delta > UINT32_MAX - sampleId)
+    throw new EXCEPTION("stsc firstSample overflow");
+sampleId += (uint32_t)delta;
+```
+
+**POC:** `test/poc_stsc_overflow.mp4` (547 bytes) - video track with `stsc` containing 2 entries: entry 0 has `firstChunk=1, samplesPerChunk=0x80000000`; entry 1 has `firstChunk=3`. Delta = `(3-1) * 0x80000000 = 0x100000000` which overflows uint32.
+
+---
+
+### Vuln #14: trun Flags-Based Parsing with Unbounded sampleCount
+
+**Fixed in:** `src/atom_trun.cpp`
+
+**Problem:** `MP4TrunAtom::Read()` reads `sampleCount` from the file, then creates table columns based on flags, then reads the table. The existing Vuln #4 fix in `MP4TableProperty::Read()` validates against the atom's declared size (`m_end`), but a malicious file can use an extended-size atom header to claim a huge size, bypassing that check. With all flags set (0xF00), each entry is 16 bytes; `sampleCount=0x10000000` requests 4GB of allocation from a tiny file.
+
+**Fix:** Added validation in `MP4TrunAtom::Read()` after reading `sampleCount` that computes the required bytes (based on which flag-dependent columns are present) and checks against the actual remaining file size:
+```cpp
+uint32_t bytesPerEntry = 0;
+if (flags & 0x100) bytesPerEntry += 4;  // sampleDuration
+if (flags & 0x200) bytesPerEntry += 4;  // sampleSize
+if (flags & 0x400) bytesPerEntry += 4;  // sampleFlags
+if (flags & 0x800) bytesPerEntry += 4;  // sampleCompositionTimeOffset
+uint64_t requiredBytes = (uint64_t)sampleCount * bytesPerEntry;
+uint64_t remaining = fileSize - currentPos;
+if (requiredBytes > remaining)
+    throw new EXCEPTION("trun sampleCount exceeds file bounds");
+```
+
+**POC:** `test/poc_trun_overflow.mp4` (627 bytes) - fragmented MP4 with `trun` using extended-size header, `sampleCount=0x10000000`, and all per-sample flags set (16 bytes/entry = 4GB required). File is only 627 bytes.
+
+---
+
 ## Remaining Vulnerabilities (Unfixed)
 
 ### Vuln #10: Integer Overflow in ReadString Allocation Doubling [MEDIUM]
@@ -224,35 +266,6 @@ if (fixedLength && byteLength + 1 < fixedLength) {
 
 ---
 
-### Vuln #12: stsc firstSample Integer Overflow [MEDIUM]
-
-**File:** `src/atom_stsc.cpp:78-80`
-
-**Code:**
-```cpp
-for (uint32_t i = 0; i < count; i++) {
-    pFirstSample->SetValue(sampleId, i);
-    if (i < count - 1) {
-        sampleId +=
-            (pFirstChunk->GetValue(i+1) - pFirstChunk->GetValue(i))
-            * pSamplesPerChunk->GetValue(i);  // both values attacker-controlled, product overflows
-    }
-}
-```
-
-**Problem:** The multiplication `(chunk_diff) * samplesPerChunk` overflows uint32, corrupting the `firstSample` lookup table used for all subsequent sample-to-chunk mapping. Downstream, out-of-bounds array accesses occur.
-
-**Fix:** Overflow-checked arithmetic:
-```cpp
-uint64_t delta = (uint64_t)(pFirstChunk->GetValue(i+1) - pFirstChunk->GetValue(i))
-                 * pSamplesPerChunk->GetValue(i);
-if (delta > UINT32_MAX - sampleId)
-    throw new EXCEPTION("stsc firstSample overflow");
-sampleId += (uint32_t)delta;
-```
-
----
-
 ### Vuln #13: uint64 to uint32 Truncation for Unknown Atom dataSize [MEDIUM]
 
 **File:** `src/mp4atom.cpp:194-195`
@@ -275,35 +288,6 @@ pAtom->AddProperty(
     new MP4BytesProperty(*pAtom, "data", (uint32_t)dataSize));
 ```
 Or better: skip reading data for atoms > 4GB and just seek past them.
-
----
-
-### Vuln #14: trun Flags-Based Parsing with Unbounded sampleCount [HIGH]
-
-**File:** `src/atom_trun.cpp:72-83`
-
-**Code:**
-```cpp
-void MP4TrunAtom::Read()
-{
-    /* read atom version, flags, and sampleCount */
-    ReadProperties(0, 3);
-
-    /* need to create the properties based on the atom flags */
-    AddProperties(GetFlags());
-
-    /* now we can read the remaining properties */
-    ReadProperties(3);
-
-    Skip(); // to end of atom
-}
-```
-
-**Context (AddProperties at lines 52-69):** Creates table properties with columns based on `flags`. With all flags (0x100|0x200|0x400|0x800), each entry = 16 bytes. `sampleCount` (property index 2) is read from file as uint32, drives table size via `MP4TableProperty::Read` -> `GetCount()`.
-
-**Problem:** Same root cause as Vuln #4 but via `trun`. A `sampleCount` of 0x10000000 with all flags set requests 4 arrays of 256M entries each (~4GB total).
-
-**Fix:** Same approach as Vuln #4 - validate count against remaining atom size before allocation.
 
 ---
 

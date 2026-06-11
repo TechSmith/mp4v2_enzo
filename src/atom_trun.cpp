@@ -74,8 +74,38 @@ void MP4TrunAtom::Read()
     /* read atom version, flags, and sampleCount */
     ReadProperties(0, 3);
 
+    // Vuln #14 fix: validate sampleCount against actual remaining data.
+    // The Vuln #4 fix in MP4TableProperty::Read() validates against the atom's
+    // declared size (m_end), but a malicious file can set a large atom size in
+    // the header. We additionally validate against the real file size here.
+    uint32_t flags = GetFlags();
+    uint32_t sampleCount =
+        ((MP4Integer32Property*)m_pProperties[2])->GetValue();
+    if (sampleCount > 0) {
+        // Compute bytes per entry based on which flags are set
+        uint32_t bytesPerEntry = 0;
+        if (flags & 0x100) bytesPerEntry += 4;  // sampleDuration
+        if (flags & 0x200) bytesPerEntry += 4;  // sampleSize
+        if (flags & 0x400) bytesPerEntry += 4;  // sampleFlags
+        if (flags & 0x800) bytesPerEntry += 4;  // sampleCompositionTimeOffset
+
+        if (bytesPerEntry > 0) {
+            uint64_t requiredBytes = (uint64_t)sampleCount * bytesPerEntry;
+            uint64_t fileSize = m_File.GetSize();
+            uint64_t currentPos = m_File.GetPosition();
+            uint64_t remaining = (currentPos < fileSize) ? fileSize - currentPos : 0;
+            if (requiredBytes > remaining) {
+                ostringstream oss;
+                oss << "trun sampleCount " << sampleCount
+                    << " requires " << requiredBytes
+                    << " bytes but only " << remaining << " remain in file";
+                throw new EXCEPTION(oss.str().c_str());
+            }
+        }
+    }
+
     /* need to create the properties based on the atom flags */
-    AddProperties(GetFlags());
+    AddProperties(flags);
 
     /* now we can read the remaining properties */
     ReadProperties(3);

@@ -39,6 +39,8 @@ static const TestCase tests[] = {
     { "test/poc_realloc_truncation.mp4",    "Vuln #7: MP4Realloc uint32_t truncation on large alloc", true, NULL },
     { "test/poc_sample_alloc.mp4",           "Vuln #8: Uncontrolled allocation from sample size metadata", false, test_sample_alloc },
     { "test/poc_seek_bounds.mp4",            "Vuln #9: No file bounds validation on seek position", false, test_seek_bounds },
+    { "test/poc_stsc_overflow.mp4",          "Vuln #12: stsc firstSample integer overflow", true, NULL },
+    { "test/poc_trun_overflow.mp4",          "Vuln #14: trun sampleCount unbounded allocation", true, NULL },
 };
 
 static const int NUM_TESTS = sizeof(tests) / sizeof(tests[0]);
