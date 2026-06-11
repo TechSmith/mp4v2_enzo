@@ -161,6 +161,8 @@ public:
 
     /* track properties */
     MP4Atom *FindTrackAtom(MP4TrackId trackId, const char *name);
+    bool GetTrackAtomData(MP4TrackId trackId, const char *name,
+                          uint8_t **ppAtomData, uint64_t *pAtomDataSize);
     uint64_t GetTrackIntegerProperty(
         MP4TrackId trackId, const char* name);
     float GetTrackFloatProperty(

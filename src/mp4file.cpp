@@ -3209,6 +3209,29 @@ MP4Atom *MP4File::FindTrackAtom (MP4TrackId trackId, const char *name)
     return FindAtom(MakeTrackName(trackId, name));
 }
 
+bool MP4File::GetTrackAtomData(MP4TrackId trackId, const char *name,
+                               uint8_t **ppAtomData, uint64_t *pAtomDataSize)
+{
+    MP4Atom *pAtom = FindTrackAtom(trackId, name);
+    if (pAtom == NULL)
+        return false;
+
+    // Need to offset past the header (4 bytes for size and 4 bytes for atom type)
+    uint64_t headerSize = 8;
+    if (pAtom->GetLargesizeMode())
+        headerSize = 16;
+
+    SetPosition(pAtom->GetStart() + headerSize);
+
+    uint64_t atomDataSize = pAtom->GetSize();
+    uint8_t *pData = (uint8_t *)MP4Malloc(atomDataSize);
+    ReadBytes(pData, atomDataSize);
+
+    *ppAtomData = pData;
+    *pAtomDataSize = atomDataSize;
+    return true;
+}
+
 uint64_t MP4File::GetTrackIntegerProperty(MP4TrackId trackId, const char* name)
 {
     return GetIntegerProperty(MakeTrackName(trackId, name));
