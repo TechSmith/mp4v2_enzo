@@ -3,8 +3,8 @@
 ## Status
 
 - **Commit `2becd16`**: Fixed Vuln #1 and #2 (integer underflow in metadata atom parsing)
-- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix), Vuln #8 (sample size validation against file size)
-- **Remaining**: 7 vulnerabilities unfixed (see below)
+- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix), Vuln #8 (sample size validation against file size), Vuln #9 (file bounds validation on seek+read position)
+- **Remaining**: 6 vulnerabilities unfixed (see below)
 
 ## Build Instructions
 
@@ -147,31 +147,23 @@ if (sampleSize > m_File.GetSize())
 
 ---
 
-## Remaining Vulnerabilities (Unfixed)
+### Vuln #9: No File Bounds Validation on Seek Position
 
-### Vuln #9: No File Bounds Validation on Seek Position [HIGH]
+**Fixed in:** `src/mp4track.cpp`
 
-**File:** `src/mp4track.cpp:310,329`
+**Problem:** In `ReadSample()`, `fileOffset` derives from `stco`/`co64` chunk offsets (attacker-controlled) and the sample size from `stsz` is validated only against the total file size (`sampleSize > fileSize`). There was no check that `fileOffset + sampleSize` stays within file bounds. An attacker can set a chunk offset near the end of the file and a moderate sample size such that each individually passes validation but together they cause a read past EOF.
 
-**Code:**
+**Fix:** Added validation after computing both `fileOffset` and `sampleSize` that checks their sum against the file size:
 ```cpp
-uint64_t fileOffset = GetSampleFileOffset(sampleId);
-// ...
-m_File.SetPosition( fileOffset, fin );
-m_File.ReadBytes( *ppBytes, *pNumBytes, fin );
-```
-
-**Problem:** `fileOffset` derives from `stco`/`co64` chunk offsets (entirely attacker-controlled) plus the overflowable `sampleOffset`. No check that the position is within the file before seeking and reading.
-
-**Fix:** Validate before seek:
-```cpp
-uint64_t fileOffset = GetSampleFileOffset(sampleId);
-if (fileOffset + *pNumBytes > m_File.GetSize())
+if (fileOffset + (uint64_t)sampleSize > m_File.GetSize(fin))
     throw new EXCEPTION("sample read would exceed file bounds");
-m_File.SetPosition( fileOffset, fin );
 ```
+
+**POC:** `test/poc_seek_bounds.mp4` (591 bytes) - video track with `stco` chunk offset pointing to 10 bytes before EOF and `stsz` declaring sample size of 100 bytes. Offset (581) + size (100) = 681 > 591 (file size).
 
 ---
+
+## Remaining Vulnerabilities (Unfixed)
 
 ### Vuln #10: Integer Overflow in ReadString Allocation Doubling [MEDIUM]
 

@@ -28,6 +28,7 @@ struct TestCase {
 static bool test_sample_size_overflow(const char* path);
 static bool test_offset_overflow(const char* path);
 static bool test_sample_alloc(const char* path);
+static bool test_seek_bounds(const char* path);
 
 static const TestCase tests[] = {
     { "test/poc_meta_underflow.mp4",        "Vuln #1/#2: Integer underflow in metadata atom parsing", true, NULL },
@@ -37,6 +38,7 @@ static const TestCase tests[] = {
     { "test/poc_offset_overflow.mp4",       "Vuln #6: Integer overflow in sampleOffset accumulation", false, test_offset_overflow },
     { "test/poc_realloc_truncation.mp4",    "Vuln #7: MP4Realloc uint32_t truncation on large alloc", true, NULL },
     { "test/poc_sample_alloc.mp4",           "Vuln #8: Uncontrolled allocation from sample size metadata", false, test_sample_alloc },
+    { "test/poc_seek_bounds.mp4",            "Vuln #9: No file bounds validation on seek position", false, test_seek_bounds },
 };
 
 static const int NUM_TESTS = sizeof(tests) / sizeof(tests[0]);
@@ -134,6 +136,41 @@ static bool test_sample_alloc(const char* path)
 
     if (!ok && pSample == NULL) {
         printf("       PASS: ReadSample correctly rejected oversized sample allocation.\n\n");
+        return true;
+    } else {
+        printf("       FAIL: ReadSample succeeded unexpectedly (size=%u).\n\n", sampleSize);
+        if (pSample) free(pSample);
+        return false;
+    }
+}
+
+/* Test Vuln #9: file opens but ReadSample must fail because offset+size exceeds file bounds */
+static bool test_seek_bounds(const char* path)
+{
+    MP4FileHandle file = MP4Read(path);
+    if (file == MP4_INVALID_FILE_HANDLE) {
+        printf("       FAIL: MP4Read unexpectedly rejected the file.\n\n");
+        return false;
+    }
+
+    /* Get the first video track */
+    MP4TrackId trackId = MP4FindTrackId(file, 0, MP4_VIDEO_TRACK_TYPE, 0);
+    if (trackId == MP4_INVALID_TRACK_ID) {
+        printf("       FAIL: Could not find video track.\n\n");
+        MP4Close(file, 0);
+        return false;
+    }
+
+    /* Attempt to read sample 1: stco offset is near end of file, stsz claims size
+       that alone is smaller than file, but offset + size exceeds file bounds. */
+    uint8_t* pSample = NULL;
+    uint32_t sampleSize = 0;
+    bool ok = MP4ReadSample(file, trackId, 1, &pSample, &sampleSize,
+                            NULL, NULL, NULL, NULL);
+    MP4Close(file, 0);
+
+    if (!ok && pSample == NULL) {
+        printf("       PASS: ReadSample correctly detected read-past-EOF (offset+size > fileSize).\n\n");
         return true;
     } else {
         printf("       FAIL: ReadSample succeeded unexpectedly (size=%u).\n\n", sampleSize);
