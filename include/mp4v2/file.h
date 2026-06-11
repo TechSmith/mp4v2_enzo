@@ -482,9 +482,24 @@ bool MP4Optimize(
  *  @return On success a handle of the file for use in subsequent calls to
  *      the library. On error, #MP4_INVALID_FILE_HANDLE.
  */
+
+/** Callback to control which atoms should be parsed.
+ *
+ *  If provided to MP4Read, this callback is invoked for each atom
+ *  encountered during parsing. Return true to parse the atom normally,
+ *  or false to skip parsing its properties and children (the atom's
+ *  position in the tree is still recorded).
+ *
+ *  @param atomType the four-character code of the atom as a uint32_t.
+ *
+ *  @return true to parse the atom, false to skip it.
+ */
+typedef bool (*MP4ShouldParseAtomCallback)(uint32_t atomType);
+
 MP4V2_EXPORT
 MP4FileHandle MP4Read(
-    const char* fileName );
+    const char* fileName,
+    MP4ShouldParseAtomCallback cb DEFAULT(NULL) );
 
 /** Read an existing mp4 file.
  *

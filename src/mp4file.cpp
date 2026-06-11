@@ -56,6 +56,7 @@ void MP4File::Init()
     m_odTrackId = MP4_INVALID_TRACK_ID;
 
     m_useIsma = false;
+    m_shouldParseAtomCallback = NULL;
 
     m_pModificationProperty = NULL;
     m_pTimeScaleProperty = NULL;

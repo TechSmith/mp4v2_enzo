@@ -234,11 +234,15 @@ void MP4Atom::Read()
                      m_File.GetFilename().c_str(), m_type, m_size);
     }
 
-    ReadProperties();
+    // Check if a callback wants to skip parsing this atom
+    MP4ShouldParseAtomCallback cb = m_File.GetShouldParseAtomCallback();
+    if (cb == NULL || cb(ATOMID(m_type))) {
+        ReadProperties();
 
-    // read child atoms, if we expect there to be some
-    if (m_pChildAtomInfos.Size() > 0) {
-        ReadChildAtoms();
+        // read child atoms, if we expect there to be some
+        if (m_pChildAtomInfos.Size() > 0) {
+            ReadChildAtoms();
+        }
     }
 
     Skip(); // to end of atom

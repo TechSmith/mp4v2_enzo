@@ -87,9 +87,32 @@ const char* MP4GetFilename( MP4FileHandle hFile )
 
 ///////////////////////////////////////////////////////////////////////////////
 
-MP4FileHandle MP4Read( const char* fileName )
+MP4FileHandle MP4Read( const char* fileName, MP4ShouldParseAtomCallback cb )
 {
-    return MP4ReadProvider( fileName, NULL );
+    if (!fileName)
+        return MP4_INVALID_FILE_HANDLE;
+
+    MP4File *pFile = ConstructMP4File();
+    if (!pFile)
+        return MP4_INVALID_FILE_HANDLE;
+
+    try {
+        if (cb)
+            pFile->SetShouldParseAtomCallback(cb);
+        pFile->Read( fileName, NULL, NULL, NULL );
+        return (MP4FileHandle)pFile;
+    }
+    catch( Exception* x ) {
+        mp4v2::impl::log.errorf(*x);
+        delete x;
+    }
+    catch( ... ) {
+        mp4v2::impl::log.errorf("%s: \"%s\": failed", __FUNCTION__,
+                                fileName );
+    }
+
+    delete pFile;
+    return MP4_INVALID_FILE_HANDLE;
 }
 
 MP4FileHandle MP4ReadProvider( const char* fileName, const MP4FileProvider* fileProvider )

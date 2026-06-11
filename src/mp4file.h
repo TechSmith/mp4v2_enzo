@@ -163,6 +163,14 @@ public:
     MP4Atom *FindTrackAtom(MP4TrackId trackId, const char *name);
     bool GetTrackAtomData(MP4TrackId trackId, const char *name,
                           uint8_t **ppAtomData, uint64_t *pAtomDataSize);
+
+    /* atom parsing callback */
+    MP4ShouldParseAtomCallback GetShouldParseAtomCallback() const {
+        return m_shouldParseAtomCallback;
+    }
+    void SetShouldParseAtomCallback(MP4ShouldParseAtomCallback cb) {
+        m_shouldParseAtomCallback = cb;
+    }
     uint64_t GetTrackIntegerProperty(
         MP4TrackId trackId, const char* name);
     float GetTrackFloatProperty(
@@ -997,6 +1005,8 @@ protected:
     MP4TrackArray     m_pTracks;
     MP4TrackId        m_odTrackId;
     bool              m_useIsma;
+
+    MP4ShouldParseAtomCallback m_shouldParseAtomCallback;
 
     // cached properties
     MP4IntegerProperty*     m_pModificationProperty;
