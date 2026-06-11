@@ -3,8 +3,8 @@
 ## Status
 
 - **Commit `2becd16`**: Fixed Vuln #1 and #2 (integer underflow in metadata atom parsing)
-- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix)
-- **Remaining**: 8 vulnerabilities unfixed (see below)
+- **Latest**: Fixed Vuln #3 (recursion depth limit in ReadAtom), Vuln #4 (table entry count validation), Vuln #5 (overflow-checked multiplication in GetSampleSize), Vuln #6 (sampleOffset overflow and file bounds validation), Vuln #7 (MP4Realloc size_t signature fix), Vuln #8 (sample size validation against file size)
+- **Remaining**: 7 vulnerabilities unfixed (see below)
 
 ## Build Instructions
 
@@ -130,33 +130,24 @@ When truncated, a much smaller buffer is allocated, then writes overflow it.
 
 ---
 
-## Remaining Vulnerabilities (Unfixed)
+### Vuln #8: Uncontrolled Allocation from Sample Size Metadata
 
-### Vuln #8: Uncontrolled Allocation from Sample Size Metadata [HIGH]
+**Fixed in:** `src/mp4track.cpp`
 
-**File:** `src/mp4track.cpp:312-323`
+**Problem:** `ReadSample()` calls `GetSampleSize(sampleId)` which returns a value directly from file metadata (e.g., from the `stsz` atom). No upper-bound validation is performed before using this value as an allocation size via `MP4Malloc`. A malicious file can claim any sample is ~4GB (`0xFFFFFFFF`), causing an enormous allocation from a tiny file.
 
-**Code:**
-```cpp
-uint32_t sampleSize = GetSampleSize(sampleId);  // from file metadata
-// ...
-*pNumBytes = sampleSize;
-// ...
-if (*ppBytes == NULL) {
-    *ppBytes = (uint8_t*)MP4Malloc(*pNumBytes);  // up to 4GB
-}
-```
-
-**Problem:** No upper-bound validation on `sampleSize` before allocating. A file can claim any sample is ~4GB.
-
-**Fix:** Add a configurable maximum sample size (e.g., 256MB) or at minimum validate against file size:
+**Fix:** Added validation in `ReadSample()` that checks the sample size against the file size before allocating:
 ```cpp
 uint32_t sampleSize = GetSampleSize(sampleId);
 if (sampleSize > m_File.GetSize())
     throw new EXCEPTION("sample size exceeds file size");
 ```
 
+**POC:** `test/poc_sample_alloc.mp4` (591 bytes) - video track with `stsz` declaring 1 sample of size `0xFFFFFFFF` (~4GB) but file is only 591 bytes.
+
 ---
+
+## Remaining Vulnerabilities (Unfixed)
 
 ### Vuln #9: No File Bounds Validation on Seek Position [HIGH]
 

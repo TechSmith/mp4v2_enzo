@@ -310,6 +310,9 @@ void MP4Track::ReadSample(
     uint64_t fileOffset = GetSampleFileOffset(sampleId);
 
     uint32_t sampleSize = GetSampleSize(sampleId);
+    if (sampleSize > m_File.GetSize()) {
+        throw new EXCEPTION("sample size exceeds file size");
+    }
     if (*ppBytes != NULL && *pNumBytes < sampleSize) {
         throw new EXCEPTION("sample buffer is too small");
     }
