@@ -291,6 +291,16 @@ private:
     MP4Tsc2Atom &operator= ( const MP4Tsc2Atom &src );
 };
 
+class MP4PNGAtom : public MP4Atom {
+public:
+    MP4PNGAtom(MP4File &file);
+    void Generate();
+private:
+    MP4PNGAtom();
+    MP4PNGAtom( const MP4PNGAtom &src );
+    MP4PNGAtom &operator= ( const MP4PNGAtom &src );
+};
+
 
 class MP4S263Atom : public MP4Atom {
 public:

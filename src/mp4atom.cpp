@@ -947,6 +947,8 @@ MP4Atom::factory( MP4File &file, MP4Atom* parent, const char* type )
         case 'p':
             if( ATOMID(type) == ATOMID("pasp") )
                 return new MP4PaspAtom(file);
+            if( ATOMID(type) == ATOMID("png ") )
+                return new MP4PNGAtom(file);
             break;
 
         case 'r':
