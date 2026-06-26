@@ -78,7 +78,7 @@ inline char* MP4Stralloc(const char* s1) {
     return s2;
 }
 
-inline void* MP4Realloc(void* p, uint32_t newSize) {
+inline void* MP4Realloc(void* p, size_t newSize) {
     // workaround library bug
     if (p == NULL && newSize == 0) {
         return NULL;

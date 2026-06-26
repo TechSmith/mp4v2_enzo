@@ -46,6 +46,9 @@ void
 MP4DataAtom::Read()
 {
     // calculate size of the metadata from the atom size
+    // Properties before metadata: typeReserved(2) + typeSetIdentifier(1) + typeCode(1) + locale(4) = 8
+    if ( m_size < 8 )
+        throw new EXCEPTION("invalid data atom size");
     metadata.SetValueSize( m_size - 8 );
     MP4Atom::Read();
 }
@@ -95,6 +98,9 @@ MP4ItmfHdlrAtom::MP4ItmfHdlrAtom(MP4File &file)
 void
 MP4ItmfHdlrAtom::Read()
 {
+    // Properties before name: version(1) + flags(3) + reserved1(4) + handlerType(4) + reserved2(12) = 24
+    if ( m_size < 24 )
+        throw new EXCEPTION("invalid itmf hdlr atom size");
     name.SetValueSize( m_size - 24 );
     MP4FullAtom::Read();
 }
@@ -111,6 +117,9 @@ MP4MeanAtom::MP4MeanAtom(MP4File &file)
 void
 MP4MeanAtom::Read()
 {
+    // Properties before value: version(1) + flags(3) = 4
+    if ( m_size < 4 )
+        throw new EXCEPTION("invalid mean atom size");
     value.SetValueSize( m_size - 4 );
     MP4Atom::Read();
 }
@@ -127,6 +136,9 @@ MP4NameAtom::MP4NameAtom(MP4File &file)
 void
 MP4NameAtom::Read()
 {
+    // Properties before value: version(1) + flags(3) = 4
+    if ( m_size < 4 )
+        throw new EXCEPTION("invalid name atom size");
     value.SetValueSize( m_size - 4 );
     MP4FullAtom::Read();
 }

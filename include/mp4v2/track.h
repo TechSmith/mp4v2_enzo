@@ -270,6 +270,29 @@ MP4TrackId MP4AddVideoTrack(
     uint16_t      height,
     uint8_t       videoType DEFAULT(MP4_MPEG4_VIDEO_TYPE) );
 
+/** Add a TSC2 video track.
+ *
+ *  MP4AddTSC2VideoTrack adds a TechSmith TSC2 codec video track to the
+ *  mp4 file. MP4WriteSample() can then be used to add the desired video
+ *  samples.
+ *
+ *  @param hFile handle of file for operation.
+ *  @param timeScale the time scale in ticks per second of the track.
+ *  @param sampleDuration the duration of a single sample in timescale units.
+ *  @param width the video frame width in pixels.
+ *  @param height the video frame height in pixels.
+ *
+ *  @return On success, the track-id of new track.
+ *      On failure, #MP4_INVALID_TRACK_ID.
+ */
+MP4V2_EXPORT
+MP4TrackId MP4AddTSC2VideoTrack(
+    MP4FileHandle hFile,
+    uint32_t      timeScale,
+    MP4Duration   sampleDuration,
+    uint16_t      width,
+    uint16_t      height );
+
 MP4V2_EXPORT
 MP4TrackId MP4AddH264VideoTrack(
     MP4FileHandle hFile,

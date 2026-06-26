@@ -310,6 +310,12 @@ void MP4Track::ReadSample(
     uint64_t fileOffset = GetSampleFileOffset(sampleId);
 
     uint32_t sampleSize = GetSampleSize(sampleId);
+    if (sampleSize > m_File.GetSize()) {
+        throw new EXCEPTION("sample size exceeds file size");
+    }
+    if (fileOffset + (uint64_t)sampleSize > m_File.GetSize(fin)) {
+        throw new EXCEPTION("sample read would exceed file bounds");
+    }
     if (*ppBytes != NULL && *pNumBytes < sampleSize) {
         throw new EXCEPTION("sample buffer is too small");
     }
@@ -444,11 +450,12 @@ void MP4Track::WriteSample(
 
     // append sample bytes to chunk buffer
     if( m_sizeOfDataInChunkBuffer + numBytes > m_chunkBufferSize ) {
-        m_pChunkBuffer = (uint8_t*)MP4Realloc(m_pChunkBuffer, m_chunkBufferSize + numBytes);
+        size_t newChunkSize = (size_t)m_chunkBufferSize + numBytes;
+        m_pChunkBuffer = (uint8_t*)MP4Realloc(m_pChunkBuffer, newChunkSize);
         if (m_pChunkBuffer == NULL) 
             return;	
         
-        m_chunkBufferSize += numBytes;
+        m_chunkBufferSize = (uint32_t)newChunkSize;
     }
 
     memcpy(&m_pChunkBuffer[m_sizeOfDataInChunkBuffer], pBytes, numBytes);
@@ -634,7 +641,10 @@ uint32_t MP4Track::GetSampleSize(MP4SampleId sampleId)
             m_pStszFixedSampleSizeProperty->GetValue();
 
         if (fixedSampleSize != 0) {
-            return fixedSampleSize * m_bytesPerSample;
+            uint64_t result = (uint64_t)fixedSampleSize * m_bytesPerSample;
+            if (result > UINT32_MAX)
+                throw new EXCEPTION("sample size overflow");
+            return (uint32_t)result;
         }
     }
     // will have to check for 4 bit sample size here
@@ -643,10 +653,16 @@ uint32_t MP4Track::GetSampleSize(MP4SampleId sampleId)
         if ((sampleId - 1) / 2 == 0) {
             value >>= 4;
         } else value &= 0xf;
-        return m_bytesPerSample * value;
+        uint64_t result = (uint64_t)m_bytesPerSample * value;
+        if (result > UINT32_MAX)
+            throw new EXCEPTION("sample size overflow");
+        return (uint32_t)result;
     }
-    return m_bytesPerSample *
+    uint64_t result = (uint64_t)m_bytesPerSample *
            m_pStszSampleSizeProperty->GetValue(sampleId - 1);
+    if (result > UINT32_MAX)
+        throw new EXCEPTION("sample size overflow");
+    return (uint32_t)result;
 }
 
 uint32_t MP4Track::GetMaxSampleSize()
@@ -656,7 +672,10 @@ uint32_t MP4Track::GetMaxSampleSize()
             m_pStszFixedSampleSizeProperty->GetValue();
 
         if (fixedSampleSize != 0) {
-            return fixedSampleSize * m_bytesPerSample;
+            uint64_t result = (uint64_t)fixedSampleSize * m_bytesPerSample;
+            if (result > UINT32_MAX)
+                throw new EXCEPTION("sample size overflow");
+            return (uint32_t)result;
         }
     }
 
@@ -669,7 +688,10 @@ uint32_t MP4Track::GetMaxSampleSize()
             maxSampleSize = sampleSize;
         }
     }
-    return maxSampleSize * m_bytesPerSample;
+    uint64_t result = (uint64_t)maxSampleSize * m_bytesPerSample;
+    if (result > UINT32_MAX)
+        throw new EXCEPTION("sample size overflow");
+    return (uint32_t)result;
 }
 
 uint64_t MP4Track::GetTotalOfSampleSizes()
@@ -1007,7 +1029,7 @@ uint64_t MP4Track::GetSampleFileOffset(MP4SampleId sampleId)
 
     // need cumulative samples sizes from firstSample to sampleId - 1
     MP4SampleId startSample = firstSampleInChunk;
-    uint32_t sampleOffset = 0;
+    uint64_t sampleOffset = 0;
 
     if (chunkId == m_cachedSfoChunkId && sampleId >= m_cachedSfoSampleId) {
         startSample = m_cachedSfoSampleId;
@@ -1022,7 +1044,11 @@ uint64_t MP4Track::GetSampleFileOffset(MP4SampleId sampleId)
     m_cachedSfoSampleId = sampleId;
     m_cachedSfoSampleOffset = sampleOffset;
 
-    return chunkOffset + sampleOffset;
+    uint64_t fileOffset = chunkOffset + sampleOffset;
+    if (fileOffset > m_File.GetSize())
+        throw new EXCEPTION("sample offset exceeds file size");
+
+    return fileOffset;
 }
 
 void MP4Track::UpdateSampleToChunk(MP4SampleId sampleId,

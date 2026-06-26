@@ -87,9 +87,32 @@ const char* MP4GetFilename( MP4FileHandle hFile )
 
 ///////////////////////////////////////////////////////////////////////////////
 
-MP4FileHandle MP4Read( const char* fileName )
+MP4FileHandle MP4Read( const char* fileName, MP4ShouldParseAtomCallback cb )
 {
-    return MP4ReadProvider( fileName, NULL );
+    if (!fileName)
+        return MP4_INVALID_FILE_HANDLE;
+
+    MP4File *pFile = ConstructMP4File();
+    if (!pFile)
+        return MP4_INVALID_FILE_HANDLE;
+
+    try {
+        if (cb)
+            pFile->SetShouldParseAtomCallback(cb);
+        pFile->Read( fileName, NULL, NULL, NULL );
+        return (MP4FileHandle)pFile;
+    }
+    catch( Exception* x ) {
+        mp4v2::impl::log.errorf(*x);
+        delete x;
+    }
+    catch( ... ) {
+        mp4v2::impl::log.errorf("%s: \"%s\": failed", __FUNCTION__,
+                                fileName );
+    }
+
+    delete pFile;
+    return MP4_INVALID_FILE_HANDLE;
 }
 
 MP4FileHandle MP4ReadProvider( const char* fileName, const MP4FileProvider* fileProvider )
@@ -1171,6 +1194,33 @@ MP4FileHandle MP4ModifyCallbacks(const MP4IOCallbacks* callbacks,
                                                width,
                                                height,
                                                videoType);
+            }
+            catch( Exception* x ) {
+                mp4v2::impl::log.errorf(*x);
+                delete x;
+            }
+            catch( ... ) {
+                mp4v2::impl::log.errorf( "%s: failed", __FUNCTION__ );
+            }
+        }
+        return MP4_INVALID_TRACK_ID;
+    }
+
+    MP4TrackId MP4AddTSC2VideoTrack(
+        MP4FileHandle hFile,
+        uint32_t timeScale,
+        MP4Duration sampleDuration,
+        uint16_t width,
+        uint16_t height)
+    {
+        if (MP4_IS_VALID_FILE_HANDLE(hFile)) {
+            try {
+                MP4File *pFile = (MP4File *)hFile;
+
+                return pFile->AddTSC2VideoTrack(timeScale,
+                                                sampleDuration,
+                                                width,
+                                                height);
             }
             catch( Exception* x ) {
                 mp4v2::impl::log.errorf(*x);
@@ -2859,6 +2909,58 @@ MP4FileHandle MP4ModifyCallbacks(const MP4IOCallbacks* callbacks,
             }
         }
         return false;
+    }
+
+    uint64_t MP4GetSampleFileOffset(
+        MP4FileHandle hFile,
+        MP4TrackId    trackId,
+        MP4SampleId   sampleId)
+    {
+        if (MP4_IS_VALID_FILE_HANDLE(hFile)) {
+            try {
+                return ((MP4File*)hFile)->GetSampleFileOffset(
+                           trackId, sampleId);
+            }
+            catch( Exception* x ) {
+                mp4v2::impl::log.errorf(*x);
+                delete x;
+            }
+            catch( ... ) {
+                mp4v2::impl::log.errorf( "%s: failed", __FUNCTION__ );
+            }
+        }
+        return 0;
+    }
+
+    void MP4FreeTrackName(char *pTrackName)
+    {
+        MP4Free(pTrackName);
+    }
+
+    bool MP4GetTrackAtomData(
+        MP4FileHandle hFile, MP4TrackId trackId,
+        const char *atomName,
+        uint8_t **ppAtomData, uint64_t *pAtomDataSize)
+    {
+        if (MP4_IS_VALID_FILE_HANDLE(hFile)) {
+            try {
+                return ((MP4File*)hFile)->GetTrackAtomData(
+                    trackId, atomName, ppAtomData, pAtomDataSize);
+            }
+            catch( Exception* x ) {
+                mp4v2::impl::log.errorf(*x);
+                delete x;
+            }
+            catch( ... ) {
+                mp4v2::impl::log.errorf( "%s: failed", __FUNCTION__ );
+            }
+        }
+        return false;
+    }
+
+    void MP4FreeTrackAtomData(uint8_t *pAtomData)
+    {
+        MP4Free(pAtomData);
     }
 
     bool MP4GetTrackIntegerProperty (

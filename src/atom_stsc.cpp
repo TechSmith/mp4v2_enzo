@@ -75,9 +75,12 @@ void MP4StscAtom::Read()
         pFirstSample->SetValue(sampleId, i);
 
         if (i < count - 1) {
-            sampleId +=
-                (pFirstChunk->GetValue(i+1) - pFirstChunk->GetValue(i))
-                * pSamplesPerChunk->GetValue(i);
+            // Vuln #12 fix: use uint64_t to detect overflow in chunk*samplesPerChunk
+            uint64_t delta = (uint64_t)(pFirstChunk->GetValue(i+1) - pFirstChunk->GetValue(i))
+                             * pSamplesPerChunk->GetValue(i);
+            if (delta > UINT32_MAX - sampleId)
+                throw new EXCEPTION("stsc firstSample overflow");
+            sampleId += (uint32_t)delta;
         }
     }
 }

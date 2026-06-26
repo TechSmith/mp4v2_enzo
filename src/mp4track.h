@@ -169,11 +169,12 @@ public:
     MP4Duration GetDurationPerChunk();
     void        SetDurationPerChunk( MP4Duration );
 
+    uint64_t    GetSampleFileOffset(MP4SampleId sampleId);
+
 protected:
     bool        InitEditListProperties();
 
     File*       GetSampleFile( MP4SampleId sampleId );
-    uint64_t    GetSampleFileOffset(MP4SampleId sampleId);
     uint32_t    GetSampleStscIndex(MP4SampleId sampleId);
     uint32_t    GetChunkStscIndex(MP4ChunkId chunkId);
     uint32_t    GetChunkSize(MP4ChunkId chunkId);
@@ -291,7 +292,7 @@ protected:
     // for improved sample file offset query performance
     MP4ChunkId  m_cachedSfoChunkId;
     MP4SampleId m_cachedSfoSampleId;
-    uint32_t    m_cachedSfoSampleOffset;
+    uint64_t    m_cachedSfoSampleOffset;
 
     string m_sdtpLog; // records frame types for H264 samples
 };

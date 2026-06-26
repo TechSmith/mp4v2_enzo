@@ -56,6 +56,7 @@ void MP4File::Init()
     m_odTrackId = MP4_INVALID_TRACK_ID;
 
     m_useIsma = false;
+    m_shouldParseAtomCallback = NULL;
 
     m_pModificationProperty = NULL;
     m_pTimeScaleProperty = NULL;
@@ -1840,6 +1841,31 @@ MP4TrackId MP4File::AddMP4VideoTrack(
     return trackId;
 }
 
+MP4TrackId MP4File::AddTSC2VideoTrack(
+    uint32_t timeScale,
+    MP4Duration sampleDuration,
+    uint16_t width,
+    uint16_t height)
+{
+    MP4TrackId trackId = AddVideoTrackDefault(timeScale,
+                         sampleDuration,
+                         width,
+                         height,
+                         "tsc2");
+
+    SetTrackIntegerProperty(trackId, "mdia.minf.stbl.stsd.tsc2.width", width);
+    SetTrackIntegerProperty(trackId, "mdia.minf.stbl.stsd.tsc2.height", height);
+    SetTrackIntegerProperty(trackId, "mdia.minf.stbl.stsd.tsc2.esds.ESID", 0);
+
+    SetTrackIntegerProperty(trackId,
+                            "mdia.minf.stbl.stsd.tsc2.esds.decConfigDescr.objectTypeId",
+                            MP4_PRIVATE_VIDEO_TYPE);
+    SetTrackIntegerProperty(trackId,
+                            "mdia.minf.stbl.stsd.tsc2.esds.decConfigDescr.streamType",
+                            MP4VisualStreamType);
+    return trackId;
+}
+
 // ismacrypted
 MP4TrackId MP4File::AddEncVideoTrack(uint32_t timeScale,
                                      MP4Duration sampleDuration,
@@ -3207,6 +3233,34 @@ char* MP4File::MakeTrackName(MP4TrackId trackId, const char* name)
 MP4Atom *MP4File::FindTrackAtom (MP4TrackId trackId, const char *name)
 {
     return FindAtom(MakeTrackName(trackId, name));
+}
+
+uint64_t MP4File::GetSampleFileOffset(MP4TrackId trackId, MP4SampleId sampleId)
+{
+    return m_pTracks[FindTrackIndex(trackId)]->GetSampleFileOffset(sampleId);
+}
+
+bool MP4File::GetTrackAtomData(MP4TrackId trackId, const char *name,
+                               uint8_t **ppAtomData, uint64_t *pAtomDataSize)
+{
+    MP4Atom *pAtom = FindTrackAtom(trackId, name);
+    if (pAtom == NULL)
+        return false;
+
+    // Need to offset past the header (4 bytes for size and 4 bytes for atom type)
+    uint64_t headerSize = 8;
+    if (pAtom->GetLargesizeMode())
+        headerSize = 16;
+
+    SetPosition(pAtom->GetStart() + headerSize);
+
+    uint64_t atomDataSize = pAtom->GetSize();
+    uint8_t *pData = (uint8_t *)MP4Malloc(atomDataSize);
+    ReadBytes(pData, atomDataSize);
+
+    *ppAtomData = pData;
+    *pAtomDataSize = atomDataSize;
+    return true;
 }
 
 uint64_t MP4File::GetTrackIntegerProperty(MP4TrackId trackId, const char* name)

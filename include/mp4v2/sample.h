@@ -402,6 +402,24 @@ uint32_t MP4GetSampleSize(
     MP4TrackId    trackId,
     MP4SampleId   sampleId);
 
+/** Get the file offset of a sample.
+ *
+ *  MP4GetSampleFileOffset returns the file byte offset of the specified
+ *  sample in the specified track.
+ *
+ *  @param hFile handle of file for operation.
+ *  @param trackId id of track for operation.
+ *  @param sampleId id of sample for operation. Caveat: the first sample
+ *      has id <b>1</b> not <b>0</b>.
+ *
+ *  @return On success, the file offset in bytes. On error, <b>0</b>.
+ */
+MP4V2_EXPORT
+uint64_t MP4GetSampleFileOffset(
+    MP4FileHandle hFile,
+    MP4TrackId    trackId,
+    MP4SampleId   sampleId);
+
 /** Get the maximum sample size of a track.
  *
  *  MP4GetTrackMaxSampleSize returns the maximum size in bytes of all the

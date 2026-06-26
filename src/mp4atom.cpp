@@ -111,6 +111,14 @@ void MP4Atom::Generate()
 
 MP4Atom* MP4Atom::ReadAtom(MP4File& file, MP4Atom* pParentAtom)
 {
+    // Vuln #3 fix: prevent stack overflow from deeply nested atoms
+    static const uint8_t MAX_ATOM_DEPTH = 64;
+    if (pParentAtom && pParentAtom->GetDepth() >= MAX_ATOM_DEPTH) {
+        ostringstream oss;
+        oss << "atom nesting depth exceeds maximum (" << (unsigned)MAX_ATOM_DEPTH << ")";
+        throw new EXCEPTION(oss.str().c_str());
+    }
+
     uint8_t hdrSize = 8;
     uint8_t extendedType[16];
 
@@ -234,11 +242,15 @@ void MP4Atom::Read()
                      m_File.GetFilename().c_str(), m_type, m_size);
     }
 
-    ReadProperties();
+    // Check if a callback wants to skip parsing this atom
+    MP4ShouldParseAtomCallback cb = m_File.GetShouldParseAtomCallback();
+    if (cb == NULL || cb(ATOMID(m_type))) {
+        ReadProperties();
 
-    // read child atoms, if we expect there to be some
-    if (m_pChildAtomInfos.Size() > 0) {
-        ReadChildAtoms();
+        // read child atoms, if we expect there to be some
+        if (m_pChildAtomInfos.Size() > 0) {
+            ReadChildAtoms();
+        }
     }
 
     Skip(); // to end of atom
@@ -943,6 +955,8 @@ MP4Atom::factory( MP4File &file, MP4Atom* parent, const char* type )
         case 'p':
             if( ATOMID(type) == ATOMID("pasp") )
                 return new MP4PaspAtom(file);
+            if( ATOMID(type) == ATOMID("png ") )
+                return new MP4PNGAtom(file);
             break;
 
         case 'r':
@@ -986,6 +1000,8 @@ MP4Atom::factory( MP4File &file, MP4Atom* parent, const char* type )
         case 't':
             if( ATOMID(type) == ATOMID("text") )
                 return new MP4TextAtom(file);
+            if( ATOMID(type) == ATOMID("tsc2") )
+                return new MP4Tsc2Atom(file);
             if( ATOMID(type) == ATOMID("tx3g") )
                 return new MP4Tx3gAtom(file);
             if( ATOMID(type) == ATOMID("tkhd") )
@@ -1012,6 +1028,8 @@ MP4Atom::factory( MP4File &file, MP4Atom* parent, const char* type )
         case 'v':
             if( ATOMID(type) == ATOMID("vmhd") )
                 return new MP4VmhdAtom(file);
+            if( ATOMID(type) == ATOMID("vp09") )
+                return new MP4Vp09Atom(file);
             break;
 
         case 'y':

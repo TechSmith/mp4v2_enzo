@@ -38,6 +38,9 @@ MP4SdtpAtom::MP4SdtpAtom(MP4File &file)
 
 void MP4SdtpAtom::Read()
 {
+    // Properties before data: version(1) + flags(3) = 4
+    if ( m_size < 4 )
+        throw new EXCEPTION("invalid sdtp atom size");
     data.SetValueSize( m_size - 4 );
     MP4FullAtom::Read();
 }

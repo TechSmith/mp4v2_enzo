@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(MP4v2 VERSION 2.1.3)
 
@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 option(BUILD_SHARED "Build libmp4v2 as a shared library" ON)
 option(BUILD_UTILS "Build MP4v2 auxiliary tools" ON)
+option(SET_VERSION_PROPERTIES "Set VERSION and SOVERSION on the mp4v2 shared library" ON)
 
 #
 # Generate include/mp4v2/project.h and libplatform/config.h
@@ -91,7 +92,7 @@ function(configure_pkg_config_file pkg_config_file_in)
     set(VERSION ${PROJECT_version})
     string(REPLACE ".in" "" pkg_config_file ${pkg_config_file_in})
     configure_file(${pkg_config_file_in} ${pkg_config_file} @ONLY)
-endfunction() 
+endfunction()
 
 configure_pkg_config_file(mp4v2.pc.in)
 
@@ -243,9 +244,12 @@ set(MP4V2_SOURCE_FILES
         src/atom_nmhd.cpp
         src/atom_ohdr.cpp
         src/atom_pasp.cpp
+        src/atom_png.cpp
         src/atom_root.cpp
         src/atom_rtp.cpp
         src/atom_s263.cpp
+        src/atom_tsc2.cpp
+        src/atom_vp09.cpp
         src/atom_sdp.cpp
         src/atom_sdtp.cpp
         src/atom_smi.cpp
@@ -308,7 +312,9 @@ set(LIBUTIL_SOURCE_FILES
 if(BUILD_SHARED)
     add_library(mp4v2 SHARED ${MP4V2_SOURCE_FILES})
     target_compile_definitions(mp4v2 PRIVATE MP4V2_EXPORTS)
-    set_target_properties(mp4v2 PROPERTIES VERSION ${PROJECT_version} SOVERSION ${PROJECT_version_major})
+    if(SET_VERSION_PROPERTIES)
+        set_target_properties(mp4v2 PROPERTIES VERSION ${PROJECT_version} SOVERSION ${PROJECT_version_major})
+    endif()
 else()
     add_library(mp4v2 STATIC ${MP4V2_SOURCE_FILES})
     target_compile_definitions(mp4v2 PUBLIC MP4V2_USE_STATIC_LIB)
@@ -391,4 +397,11 @@ if(BUILD_UTILS)
                     mp4track
                     mp4trackdump RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()
+
+#
+# Test target
+#
+add_executable(mp4v2_test test/test_vuln_poc.cpp)
+target_link_libraries(mp4v2_test mp4v2)
+target_compile_definitions(mp4v2_test PRIVATE POC_TEST_FILES_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
