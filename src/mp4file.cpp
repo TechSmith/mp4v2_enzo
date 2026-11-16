@@ -489,14 +489,15 @@ void MP4File::GenerateTracks()
             "trak.mdia.hdlr.handlerType",
             (MP4Property**)&pTypeProperty);
 
-        // ensure we have the basics properties
-        if (pTrackIdProperty && pTypeProperty) {
+        // A missing handler type cannot produce a usable track.
+        const char* handlerType = pTypeProperty ? pTypeProperty->GetValue() : NULL;
+        if (pTrackIdProperty && handlerType) {
 
             m_trakIds.Add(pTrackIdProperty->GetValue());
 
             MP4Track* pTrack = NULL;
             try {
-                if (strequal(pTypeProperty->GetValue(), MP4_HINT_TRACK_TYPE)) {
+                if (strequal(handlerType, MP4_HINT_TRACK_TYPE)) {
                     pTrack = new MP4RtpHintTrack(*this, *pTrakAtom);
                 } else {
                     pTrack = new MP4Track(*this, *pTrakAtom);
