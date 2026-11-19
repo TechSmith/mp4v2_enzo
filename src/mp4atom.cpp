@@ -163,53 +163,58 @@ MP4Atom* MP4Atom::ReadAtom(MP4File& file, MP4Atom* pParentAtom)
     log.verbose1f("\"%s\": type = \"%s\" data-size = %" PRIu64 " (0x%" PRIx64 ") hdr %u",
                   file.GetFilename().c_str(), type, dataSize, dataSize, hdrSize);
 
-    if (pos + hdrSize + dataSize > pParentAtom->GetEnd()) {
+    const uint64_t parentEnd = pParentAtom->GetEnd();
+    if (pos > parentEnd || dataSize + hdrSize > parentEnd - pos) {
+        const uint64_t remaining = pos <= parentEnd ? parentEnd - pos : 0;
         log.errorf("%s: \"%s\": invalid atom size, extends outside parent atom - skipping to end of \"%s\" \"%s\" %" PRIu64 " vs %" PRIu64,
                    __FUNCTION__, file.GetFilename().c_str(), pParentAtom->GetType(), type,
-                   pos + hdrSize + dataSize,
-                   pParentAtom->GetEnd());
+                   dataSize + hdrSize,
+                   remaining);
         log.verbose1f("\"%s\": parent %s (%" PRIu64 ") pos %" PRIu64 " hdr %d data %" PRIu64 " sum %" PRIu64,
                       file.GetFilename().c_str(), pParentAtom->GetType(),
-                      pParentAtom->GetEnd(),
+                      parentEnd,
                       pos,
                       hdrSize,
                       dataSize,
-                      pos + hdrSize + dataSize);
+                      dataSize + hdrSize);
 
-        // skip to end of atom
-        dataSize = pParentAtom->GetEnd() - pos - hdrSize;
+        // The parent may have fewer bytes left than this atom's header.
+        if (pos > parentEnd || parentEnd - pos < hdrSize) {
+            throw new EXCEPTION("atom header extends outside parent atom");
+        }
+        dataSize = parentEnd - pos - hdrSize;
     }
 
     MP4Atom* pAtom = CreateAtom(file, pParentAtom, type);
-    //    pAtom->SetFile(pFile);
-    pAtom->SetStart(pos);
-    pAtom->SetEnd(pos + hdrSize + dataSize);
-    pAtom->SetLargesizeMode(largesizeMode);
-    pAtom->SetSize(dataSize);
-    if (ATOMID(type) == ATOMID("uuid")) {
-        pAtom->SetExtendedType(extendedType);
-    }
-    if (pAtom->IsUnknownType()) {
-        if (!IsReasonableType(pAtom->GetType())) {
-            log.warningf("%s: \"%s\": atom type %s is suspect", __FUNCTION__, file.GetFilename().c_str(),
-                         pAtom->GetType());
-        } else {
-            log.verbose1f("\"%s\": Info: atom type %s is unknown", file.GetFilename().c_str(),
-                          pAtom->GetType());
-        }
-
-        if (dataSize > 0) {
-            pAtom->AddProperty(
-                new MP4BytesProperty(*pAtom, "data", dataSize));
-        }
-    }
-
-    pAtom->SetParentAtom(pParentAtom);
-
     try {
+        //    pAtom->SetFile(pFile);
+        pAtom->SetStart(pos);
+        pAtom->SetEnd(pos + hdrSize + dataSize);
+        pAtom->SetLargesizeMode(largesizeMode);
+        pAtom->SetSize(dataSize);
+        if (ATOMID(type) == ATOMID("uuid")) {
+            pAtom->SetExtendedType(extendedType);
+        }
+        if (pAtom->IsUnknownType()) {
+            if (!IsReasonableType(pAtom->GetType())) {
+                log.warningf("%s: \"%s\": atom type %s is suspect", __FUNCTION__, file.GetFilename().c_str(),
+                             pAtom->GetType());
+            } else {
+                log.verbose1f("\"%s\": Info: atom type %s is unknown", file.GetFilename().c_str(),
+                              pAtom->GetType());
+            }
+
+            if (dataSize > 0) {
+                pAtom->AddProperty(
+                    new MP4BytesProperty(*pAtom, "data", dataSize));
+            }
+        }
+
+        pAtom->SetParentAtom(pParentAtom);
+
         pAtom->Read();
     }
-    catch (Exception*) {
+    catch (...) {
         // delete atom and rethrow so we don't leak memory.
         delete pAtom;
         throw;
