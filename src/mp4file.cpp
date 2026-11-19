@@ -2674,28 +2674,35 @@ MP4ChapterType MP4File::GetChapters(MP4Chapter_t ** chapterList, uint32_t * chap
                 uint32_t timescale = pChapterTrack->GetTimeScale();
                 MP4Chapter_t * chapters = (MP4Chapter_t*)MP4Malloc(sizeof(MP4Chapter_t) * counter);
 
-                // process all chapter sample
-                for (uint32_t i = 0; i < counter; ++i)
-                {
-                    // get the sample corresponding to the starttime
-                    MP4SampleId sampleId = pChapterTrack->GetSampleIdFromTime(startTime + duration, true);
-                    pChapterTrack->ReadSample(sampleId, &sample, &sampleSize);
+                try {
+                    // process all chapter sample
+                    for (uint32_t i = 0; i < counter; ++i)
+                    {
+                        // get the sample corresponding to the starttime
+                        MP4SampleId sampleId = pChapterTrack->GetSampleIdFromTime(startTime + duration, true);
+                        pChapterTrack->ReadSample(sampleId, &sample, &sampleSize);
 
-                    // get the starttime and duration
-                    pChapterTrack->GetSampleTimes(sampleId, &startTime, &duration);
+                        // get the starttime and duration
+                        pChapterTrack->GetSampleTimes(sampleId, &startTime, &duration);
 
-                    // we know that sample+2 contains the title (sample[0] and sample[1] is the length)
-                    const char * title = (const char *)&(sample[2]);
-                    int titleLen = min((uint32_t)((sample[0] << 8) | sample[1]), (uint32_t)MP4V2_CHAPTER_TITLE_MAX);
-                    strncpy(chapters[i].title, title, titleLen);
-                    chapters[i].title[titleLen] = 0;
+                        // we know that sample+2 contains the title (sample[0] and sample[1] is the length)
+                        const char * title = (const char *)&(sample[2]);
+                        int titleLen = min((uint32_t)((sample[0] << 8) | sample[1]), (uint32_t)MP4V2_CHAPTER_TITLE_MAX);
+                        strncpy(chapters[i].title, title, titleLen);
+                        chapters[i].title[titleLen] = 0;
 
-                    // write the duration (in milliseconds)
-                    chapters[i].duration = MP4ConvertTime(duration, timescale, MP4_MILLISECONDS_TIME_SCALE);
+                        // write the duration (in milliseconds)
+                        chapters[i].duration = MP4ConvertTime(duration, timescale, MP4_MILLISECONDS_TIME_SCALE);
 
-                    // we're done with this sample
+                        // we're done with this sample
+                        MP4Free(sample);
+                        sample = 0;
+                    }
+                }
+                catch (...) {
                     MP4Free(sample);
-                    sample = 0;
+                    MP4Free(chapters);
+                    throw;
                 }
 
                 *chapterList = chapters;
@@ -2759,8 +2766,9 @@ MP4ChapterType MP4File::GetChapters(MP4Chapter_t ** chapterList, uint32_t * chap
 
         MP4Chapter_t * chapters = (MP4Chapter_t*)MP4Malloc(sizeof(MP4Chapter_t) * counter);
 
-        // get the name of the first chapter
-        name = pName->GetValue();
+        try {
+            // get the name of the first chapter
+            name = pName->GetValue();
 
         // process remaining chapters
         uint32_t i, j;
@@ -2798,6 +2806,11 @@ MP4ChapterType MP4File::GetChapters(MP4Chapter_t ** chapterList, uint32_t * chap
         *chapterCount = counter;
 
         return MP4ChapterTypeNero;
+        }
+        catch (...) {
+            MP4Free(chapters);
+            throw;
+        }
     }
 
     return MP4ChapterTypeNone;
