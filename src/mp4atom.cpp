@@ -164,8 +164,11 @@ MP4Atom* MP4Atom::ReadAtom(MP4File& file, MP4Atom* pParentAtom)
                   file.GetFilename().c_str(), type, dataSize, dataSize, hdrSize);
 
     const uint64_t parentEnd = pParentAtom->GetEnd();
-    if (pos > parentEnd || dataSize + hdrSize > parentEnd - pos) {
-        const uint64_t remaining = pos <= parentEnd ? parentEnd - pos : 0;
+    if (pos > parentEnd || parentEnd - pos < hdrSize) {
+        throw new EXCEPTION("atom header extends outside parent atom");
+    }
+    const uint64_t remaining = parentEnd - pos;
+    if (dataSize + hdrSize > remaining) {
         log.errorf("%s: \"%s\": invalid atom size, extends outside parent atom - skipping to end of \"%s\" \"%s\" %" PRIu64 " vs %" PRIu64,
                    __FUNCTION__, file.GetFilename().c_str(), pParentAtom->GetType(), type,
                    dataSize + hdrSize,
@@ -178,11 +181,7 @@ MP4Atom* MP4Atom::ReadAtom(MP4File& file, MP4Atom* pParentAtom)
                       dataSize,
                       dataSize + hdrSize);
 
-        // The parent may have fewer bytes left than this atom's header.
-        if (pos > parentEnd || parentEnd - pos < hdrSize) {
-            throw new EXCEPTION("atom header extends outside parent atom");
-        }
-        dataSize = parentEnd - pos - hdrSize;
+        dataSize = remaining - hdrSize;
     }
 
     MP4Atom* pAtom = CreateAtom(file, pParentAtom, type);
