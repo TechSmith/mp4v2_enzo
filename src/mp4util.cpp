@@ -278,27 +278,15 @@ MP4Timestamp MP4GetAbsTimestamp() {
 
 uint32_t STRTOINT32( const char* s )
 {
-#if defined( MP4V2_INTSTRING_ALIGNMENT )
-    // it seems ARM integer instructions require 4-byte alignment so we
-    // manually copy string-data into the integer before performing ops
     uint32_t tmp;
     memcpy( &tmp, s, sizeof(tmp) );
     return MP4V2_NTOHL( tmp );
-#else
-    return MP4V2_NTOHL(*(uint32_t *)s);
-#endif
 }
 
 void INT32TOSTR( uint32_t i, char* s )
 {
-#if defined( MP4V2_INTSTRING_ALIGNMENT )
-    // it seems ARM integer instructions require 4-byte alignment so we
-    // manually copy string-data into the integer before performing ops
     uint32_t tmp = MP4V2_HTONL( i );
     memcpy( s, &tmp, sizeof(tmp) );
-#else
-    *(uint32_t *)s = MP4V2_HTONL(i);
-#endif
     s[4] = 0;
 }
 

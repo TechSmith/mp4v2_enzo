@@ -317,27 +317,29 @@ void MP4RtpHintTrack::GetPayload(
             *ppEncodingParams = NULL;
         if (m_pRtpMapProperty) {
             pRtpMap = m_pRtpMapProperty->GetValue();
-            pSlash = strchr(pRtpMap, '/');
+            if (pRtpMap) {
+                pSlash = strchr(pRtpMap, '/');
 
-            if (pSlash) {
-                length = pSlash - pRtpMap;
-            } else {
-                length = (uint32_t)strlen(pRtpMap);
-            }
+                if (pSlash) {
+                    length = pSlash - pRtpMap;
+                } else {
+                    length = (uint32_t)strlen(pRtpMap);
+                }
 
-            if (ppPayloadName) {
-                *ppPayloadName = (char*)MP4Calloc(length + 1);
-                memcpy(*ppPayloadName, pRtpMap, length);
-            }
-            if (pSlash && ppEncodingParams) {
-                pSlash++;
-                pSlash = strchr(pSlash, '/');
-                if (pSlash != NULL) {
+                if (ppPayloadName) {
+                    *ppPayloadName = (char*)MP4Calloc(length + 1);
+                    memcpy(*ppPayloadName, pRtpMap, length);
+                }
+                if (pSlash && ppEncodingParams) {
                     pSlash++;
-                    if (*pSlash != '\0') {
-                        length = (uint32_t)strlen(pRtpMap) - (pSlash - pRtpMap);
-                        *ppEncodingParams = (char *)MP4Calloc(length + 1);
-                        memcpy(*ppEncodingParams, pSlash, length);
+                    pSlash = strchr(pSlash, '/');
+                    if (pSlash != NULL) {
+                        pSlash++;
+                        if (*pSlash != '\0') {
+                            length = (uint32_t)strlen(pRtpMap) - (pSlash - pRtpMap);
+                            *ppEncodingParams = (char *)MP4Calloc(length + 1);
+                            memcpy(*ppEncodingParams, pSlash, length);
+                        }
                     }
                 }
             }
