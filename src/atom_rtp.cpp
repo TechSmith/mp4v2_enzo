@@ -124,7 +124,7 @@ void MP4RtpAtom::ReadHntiType()
     ReadProperties(0, 1);
 
     // read sdp string, length is implicit in size of atom
-    if (m_File.GetPosition() >= GetEnd()) {
+    if (m_File.GetPosition() > GetEnd()) {
         log.warningf("%s: \"%s\": invalid atom size", __FUNCTION__, GetType());
         return;
     }
