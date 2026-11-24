@@ -722,6 +722,7 @@
     <ClCompile Include="..\..\src\atom_nmhd.cpp" />
     <ClCompile Include="..\..\src\atom_ohdr.cpp" />
     <ClCompile Include="..\..\src\atom_pasp.cpp" />
+    <ClCompile Include="..\..\src\atom_png.cpp" />
     <ClCompile Include="..\..\src\atom_root.cpp" />
     <ClCompile Include="..\..\src\atom_rtp.cpp" />
     <ClCompile Include="..\..\src\atom_s263.cpp" />
@@ -740,6 +741,7 @@
     <ClCompile Include="..\..\src\atom_tfhd.cpp" />
     <ClCompile Include="..\..\src\atom_tkhd.cpp" />
     <ClCompile Include="..\..\src\atom_treftype.cpp" />
+    <ClCompile Include="..\..\src\atom_tsc2.cpp" />
     <ClCompile Include="..\..\src\atom_trun.cpp" />
     <ClCompile Include="..\..\src\atom_tx3g.cpp" />
     <ClCompile Include="..\..\src\atom_udta.cpp" />
@@ -748,6 +750,7 @@
     <ClCompile Include="..\..\src\atom_uuid.cpp" />
     <ClCompile Include="..\..\src\atom_video.cpp" />
     <ClCompile Include="..\..\src\atom_vmhd.cpp" />
+    <ClCompile Include="..\..\src\atom_vp09.cpp" />
     <ClCompile Include="..\..\src\bmff\typebmff.cpp" />
     <ClCompile Include="..\..\src\cmeta.cpp" />
     <ClCompile Include="..\..\src\descriptors.cpp" />

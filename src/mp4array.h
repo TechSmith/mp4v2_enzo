@@ -62,12 +62,14 @@ public:
             throw new PLATFORM_EXCEPTION("illegal array index", ERANGE);
         }
         if (m_numElements == m_maxNumElements) {
-            MP4ArrayIndex newSize = max(m_maxNumElements, (MP4ArrayIndex)1) * 2;
-            size_t allocBytes = (size_t)newSize * sizeof(type);
-            if (allocBytes / sizeof(type) != newSize)
+            uint64_t newCapacity = (uint64_t)max(m_maxNumElements, (MP4ArrayIndex)1) * 2;
+            if (newCapacity > UINT32_MAX)
+                throw new PLATFORM_EXCEPTION("array insert overflow", ERANGE);
+            size_t allocBytes = (size_t)newCapacity * sizeof(type);
+            if (allocBytes / sizeof(type) != newCapacity)
                 throw new PLATFORM_EXCEPTION("array insert overflow", ERANGE);
             m_elements = (type*)MP4Realloc(m_elements, allocBytes);
-            m_maxNumElements = newSize;
+            m_maxNumElements = (MP4ArrayIndex)newCapacity;
         }
         memmove(&m_elements[newIndex + 1], &m_elements[newIndex],
             (m_numElements - newIndex) * sizeof(type));
